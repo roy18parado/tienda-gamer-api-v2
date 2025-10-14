@@ -1,43 +1,52 @@
-/**
- * @swagger
- * components:
- *   schemas:
- *     Categoria:
- *       type: object
- *       required:
- *         - nombre
- *       properties:
- *         id:
- *           type: integer
- *           description: El ID autogenerado de la categoría.
- *         nombre:
- *           type: string
- *           description: El nombre de la categoría.
- *       example:
- *         id: 1
- *         nombre: "Monitores"
- */
+// routes/categorias.js
+const express = require('express');
+const db = require('../db');
+const { requireRole } = require('../middleware/auth');
 
-/**
- * @swagger
- * tags:
- *   - name: Categorias
- *     description: API para la gestión de categorías de productos.
- */
+const router = express.Router();
 
-/**
- * @swagger
- * /categorias:
- *   get:
- *     summary: Devuelve la lista de todas las categorías.
- *     tags: [Categorias]
- *     responses:
- *       200:
- *         description: La lista de categorías.
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Categoria'
- */
+// GET /categorias (público)
+router.get('/', async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM categorias ORDER BY id DESC');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /categorias (admin|super)
+router.post('/', requireRole('admin','super'), async (req, res) => {
+  const { nombre } = req.body;
+  try {
+    const [result] = await db.query('INSERT INTO categorias (nombre) VALUES (?)', [nombre]);
+    res.json({ id: result.insertId, nombre });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /categorias/:id (admin|super)
+router.put('/:id', requireRole('admin','super'), async (req, res) => {
+  const { id } = req.params;
+  const { nombre } = req.body;
+  try {
+    await db.query('UPDATE categorias SET nombre = ? WHERE id = ?', [nombre, id]);
+    res.json({ id, nombre });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /categorias/:id (admin|super)
+router.delete('/:id', requireRole('admin','super'), async (req, res) => {
+  const { id } = req.params;
+  try {
+    await db.query('DELETE FROM categorias WHERE id = ?', [id]);
+    res.json({ mensaje: 'Categoría eliminada' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+module.exports = router;
