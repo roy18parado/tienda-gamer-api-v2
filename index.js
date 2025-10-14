@@ -1,4 +1,3 @@
-// index.js
 const express = require('express');
 const cors = require('cors');
 
@@ -8,14 +7,17 @@ const categoriasRoutes = require('./routes/categorias');
 const productosRoutes = require('./routes/productos');
 const imagenesRoutes = require('./routes/imagenes');
 
+const swaggerUi = require('swagger-ui-express');
+const swaggerJSDoc = require('swagger-jsdoc');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
 
-// rutas
-app.use('/', authRoutes);           // /login
+// Rutas
+app.use('/', authRoutes);
 app.use('/usuarios', usuariosRoutes);
 app.use('/categorias', categoriasRoutes);
 app.use('/productos', productosRoutes);
@@ -23,14 +25,7 @@ app.use('/imagenes', imagenesRoutes);
 
 app.get('/', (req, res) => res.json({ mensaje: 'API tienda_gamer funcionando' }));
 
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-});
-
-// --- Configuración de Swagger ---
-const swaggerUi = require('swagger-ui-express');
-const swaggerJSDoc = require('swagger-jsdoc');
-
+// Configuración Swagger
 const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
@@ -41,7 +36,7 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: 'https://tienda-gamer-api.onrender.com', // La URL de tu API desplegada
+        url: 'https://tienda-gamer-api.onrender.com',
       },
     ],
     components: {
@@ -53,21 +48,4 @@ const swaggerOptions = {
         },
       },
     },
-    security: [
-      {
-        BearerAuth: [],
-      },
-    ],
-  },
-  // Archivos que contienen la documentación (tus rutas)
-  apis: ['./routes/*.js'],
-};
-
-const swaggerSpec = swaggerJSDoc(swaggerOptions);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
-// --- Fin de la Configuración de Swagger ---
-
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-});
+    se
