@@ -1,4 +1,4 @@
-// Archivo: index.js (Versión Final con Middleware de Seguridad por IP)
+// Archivo: index.js (Versión Completa y Definitiva)
 
 const express = require('express');
 const cors = require('cors');
@@ -8,26 +8,28 @@ const path = require('path');
 const app = express();
 
 // 2. MIDDLEWARES BÁSICOS
-app.use(express.json());
+app.use(express.json()); // Para que Express entienda peticiones con cuerpo JSON
 // Habilitamos esto para que Express confíe en la información del proxy de Render
 // y nos dé la IP real del visitante en `req.ip`.
 app.set('trust proxy', 1);
 
-// --- NUESTRO MIDDLEWARE DE SEGURIDAD POR IP (EL "PORTERO") ---
-const whitelist = ['45.232.149.130', '168.194.102.140','2001:4860:7:f0b::f9']; // Lista de IPs permitidas (Instituto y tu casa)
+// --- MIDDLEWARE DE SEGURIDAD POR IP (EL "PORTERO") ---
+// Esta es la implementación correcta y segura.
+const whitelist = ['45.232.149.130', '168.194.102.140']; // IP del Instituto Y TU IP DE CASA
 
 const ipWhitelistMiddleware = (req, res, next) => {
     const clientIp = req.ip; // Obtenemos la IP real del visitante
     
+    // Este log te dirá en Render la IP exacta de cualquier visitante
     console.log(`Petición recibida desde la IP: ${clientIp}`);
 
-    // Comprobamos si la IP del visitante está en nuestra lista
+    // Comprobamos si la IP del visitante está en nuestra lista de invitados
     if (whitelist.includes(clientIp)) {
-        // Si está en la lista, le decimos a la petición que continúe al siguiente paso.
+        // Si está en la lista, le decimos a la petición que continúe.
         next();
     } else {
         // Si NO está en la lista, la bloqueamos inmediatamente.
-        res.status(403).json({ error: 'Acceso prohibido: Su dirección IP no está autorizada.' });
+        res.status(403).json({ error: `Acceso prohibido: Su dirección IP (${clientIp}) no está autorizada.` });
     }
 };
 
@@ -38,7 +40,6 @@ app.use(ipWhitelistMiddleware);
 // Ahora que nuestra seguridad por IP está funcionando, podemos usar CORS
 // de forma más abierta, ya que solo las IPs permitidas llegarán hasta aquí.
 app.use(cors());
-
 
 // 4. RUTAS DE LA API
 const authRoutes = require('./routes/auth');
