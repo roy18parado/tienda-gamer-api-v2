@@ -1,48 +1,36 @@
-// Archivo: index.js (Versión Definitiva con Verificación de Rango de IP)
+// Archivo: index.js (Versión Final con Ruta Absoluta para Swagger)
 
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
-const ipRangeCheck = require('ip-range-check'); // <-- 1. IMPORTAMOS LA NUEVA HERRAMIENTA
+const path = require('path'); // <-- PASO 1: IMPORTAR PATH
 
 // 1. INICIALIZAR LA APLICACIÓN
 const app = express();
 
-// 2. MIDDLEWARES BÁSICOS
+// 2. MIDDLEWARES
 app.use(express.json());
 app.set('trust proxy', 1);
 
-// --- MIDDLEWARE DE SEGURIDAD POR IP (VERSIÓN FINAL) ---
-// 2. DEFINIMOS LAS IPs Y LOS RANGOS PERMITIDOS
+// --- MIDDLEWARE DE SEGURIDAD POR IP ---
 const whitelist = [
-    '45.232.149.130',      // IP del Instituto
-    '168.194.102.140',     // Tu IP de casa
-    '10.214.0.0/16'        // <-- EL RANGO COMPLETO DE IPs INTERNAS DE RENDER
+    '45.232.149.130',
+    '168.194.102.140',
+    '10.214.210.158',
+    '10.214.86.182'
 ];
-
 const ipWhitelistMiddleware = (req, res, next) => {
     const clientIp = req.ip;
-
     console.log(`Petición recibida desde la IP: ${clientIp}`);
-
-    // 3. VERIFICAMOS LA IP CONTRA LA LISTA (INCLUYENDO EL RANGO)
-    const isAllowed = ipRangeCheck(clientIp, whitelist);
-
-    if (isAllowed) {
-        // Si la IP coincide directamente o está dentro del rango, permitimos el paso.
+    if (whitelist.includes(clientIp)) {
         next();
     } else {
-        // Si no, la bloqueamos.
         res.status(403).json({ error: `Acceso prohibido: Su dirección IP (${clientIp}) no está autorizada.` });
     }
 };
-
-// 3. APLICAMOS LA SEGURIDAD
 app.use(ipWhitelistMiddleware);
 app.use(cors());
 
-
-// 4. RUTAS DE LA API (No cambian)
+// 3. RUTAS DE LA API
 const authRoutes = require('./routes/auth');
 const categoriasRoutes = require('./routes/categorias');
 const productosRoutes = require('./routes/productos');
@@ -55,7 +43,7 @@ app.use('/productos', productosRoutes);
 app.use('/imagenes', imagenesRoutes);
 app.use('/usuarios', usuariosRoutes);
 
-// 5. CONFIGURACIÓN DE SWAGGER (No cambia)
+// 4. CONFIGURACIÓN DE SWAGGER
 const swaggerUi = require('swagger-ui-express');
 const swaggerJSDoc = require('swagger-jsdoc');
 
@@ -77,13 +65,14 @@ const swaggerOptions = {
       }
     },
   },
-  apis: [path.join(__dirname, './routes/*.js')],
+  // PASO 2: USAR LA RUTA ABSOLUTA
+  apis: [path.join(__dirname, './routes/*.js')], 
 };
 
 const swaggerSpec = swaggerJSDoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// 6. INICIO DEL SERVIDOR
+// 5. INICIO DEL SERVIDOR
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
