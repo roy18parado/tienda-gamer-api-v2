@@ -1,53 +1,48 @@
-// Archivo: index.js (Versión Final y Definitiva)
+// Archivo: index.js (Versión Definitiva con Verificación de Rango de IP)
 
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const ipRangeCheck = require('ip-range-check'); // <-- 1. IMPORTAMOS LA NUEVA HERRAMIENTA
 
 // 1. INICIALIZAR LA APLICACIÓN
 const app = express();
 
 // 2. MIDDLEWARES BÁSICOS
 app.use(express.json());
-// Habilitamos esto para que Express confíe en la información del proxy de Render
-// y nos dé la IP real del visitante en `req.ip`. ESTA LÍNEA ES CRUCIAL.
 app.set('trust proxy', 1);
 
-// --- MIDDLEWARE DE SEGURIDAD POR IP (EL "PORTERO") ---
-// Esta es la implementación correcta que resuelve el error.
+// --- MIDDLEWARE DE SEGURIDAD POR IP (VERSIÓN FINAL) ---
+// 2. DEFINIMOS LAS IPs Y LOS RANGOS PERMITIDOS
 const whitelist = [
     '45.232.149.130',      // IP del Instituto
-    '168.194.102.140',     // Tu IP de casa (la primera que detectamos)
-    '10.214.210.158'       // <-- LA IP CORRECTA QUE NOS DIO EL SERVIDOR
+    '168.194.102.140',     // Tu IP de casa
+    '10.214.0.0/16'        // <-- EL RANGO COMPLETO DE IPs INTERNAS DE RENDER
 ];
 
 const ipWhitelistMiddleware = (req, res, next) => {
-    const clientIp = req.ip; // Obtenemos la IP real del visitante
-    
-    // Este log te dirá en Render la IP exacta de cualquier visitante
+    const clientIp = req.ip;
+
     console.log(`Petición recibida desde la IP: ${clientIp}`);
 
-    // Comprobamos si la IP del visitante está en nuestra lista de invitados
-    if (whitelist.includes(clientIp)) {
-        // Si está en la lista, le decimos a la petición que continúe.
+    // 3. VERIFICAMOS LA IP CONTRA LA LISTA (INCLUYENDO EL RANGO)
+    const isAllowed = ipRangeCheck(clientIp, whitelist);
+
+    if (isAllowed) {
+        // Si la IP coincide directamente o está dentro del rango, permitimos el paso.
         next();
     } else {
-        // Si NO está en la lista, la bloqueamos inmediatamente.
+        // Si no, la bloqueamos.
         res.status(403).json({ error: `Acceso prohibido: Su dirección IP (${clientIp}) no está autorizada.` });
     }
 };
 
 // 3. APLICAMOS LA SEGURIDAD
-// Le decimos a Express que use nuestro "portero" para TODAS las peticiones que lleguen.
-// Debe ir ANTES de las rutas.
 app.use(ipWhitelistMiddleware);
-
-// Ahora que nuestra seguridad por IP está funcionando, podemos usar CORS
-// de forma más abierta, ya que solo las IPs permitidas llegarán hasta aquí.
 app.use(cors());
 
 
-// 4. RUTAS DE LA API (Estas no cambian)
+// 4. RUTAS DE LA API (No cambian)
 const authRoutes = require('./routes/auth');
 const categoriasRoutes = require('./routes/categorias');
 const productosRoutes = require('./routes/productos');
@@ -60,7 +55,7 @@ app.use('/productos', productosRoutes);
 app.use('/imagenes', imagenesRoutes);
 app.use('/usuarios', usuariosRoutes);
 
-// 5. CONFIGURACIÓN DE SWAGGER (Esto no cambia)
+// 5. CONFIGURACIÓN DE SWAGGER (No cambia)
 const swaggerUi = require('swagger-ui-express');
 const swaggerJSDoc = require('swagger-jsdoc');
 
