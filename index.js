@@ -1,47 +1,39 @@
-// Archivo: index.js (Versión Completa y Corregida)
+// Archivo: index.js (Versión Final con Ruta Absoluta para Swagger)
 
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
+const path = require('path'); // <-- PASO 1: IMPORTAR PATH
 
-// 1. INICIALIZAR LA APLICACIÓN (Esto faltaba y causaba el error 'app is not defined')
+// 1. INICIALIZAR LA APLICACIÓN
 const app = express();
 
-// 2. MIDDLEWARES (Configuraciones que se ejecutan en cada petición)
-app.use(express.json()); // Para que Express entienda peticiones con cuerpo JSON
+// 2. MIDDLEWARES
+app.use(express.json());
+app.set('trust proxy', 1);
 
 // --- CONFIGURACIÓN DE SEGURIDAD CORS ---
-app.set('trust proxy', 1); // Necesario para que req.ip funcione correctamente en Render
-const whitelist = ['45.232.149.130']; // IP del instituto
-
+const whitelist = ['45.232.149.130'];
 const corsOptions = {
-    origin: function (origin, callback) {
-        // En producción, 'req.ip' contendrá la IP real del visitante.
-        // Para pruebas locales, puede que necesites añadir tu IP a la whitelist.
-        const clientIp = this.req.ip;
-        if (whitelist.indexOf(clientIp) !== -1 || !origin) {
-            // Permite la petición si la IP está en la lista o si no tiene origen (ej: Postman)
-            callback(null, true);
-        } else {
-            // Rechaza la petición si la IP no está en la lista
-            callback(new Error('Acceso denegado por políticas de CORS'));
-        }
+  origin: function (origin, callback) {
+    const clientIp = this.req.ip;
+    if (whitelist.indexOf(clientIp) !== -1 || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Acceso denegado por políticas de CORS'));
     }
+  }
 };
-// Descomenta la siguiente línea para activar la seguridad CORS por IP
-// app.use(cors(corsOptions));
+app.use(cors(corsOptions));
 
-// Por ahora, usamos un CORS más abierto para facilitar el desarrollo y pruebas
-app.use(cors());
 
-// 3. RUTAS DE LA API (Conectando todos tus archivos de la carpeta /routes)
+// 3. RUTAS DE LA API
 const authRoutes = require('./routes/auth');
 const categoriasRoutes = require('./routes/categorias');
 const productosRoutes = require('./routes/productos');
 const imagenesRoutes = require('./routes/imagenes');
 const usuariosRoutes = require('./routes/usuarios');
 
-app.use('/', authRoutes); // para /login
+app.use('/', authRoutes);
 app.use('/categorias', categoriasRoutes);
 app.use('/productos', productosRoutes);
 app.use('/imagenes', imagenesRoutes);
@@ -69,7 +61,8 @@ const swaggerOptions = {
       }
     },
   },
-  apis: ['./routes/*.js'],
+  // PASO 2: USAR LA RUTA ABSOLUTA
+  apis: [path.join(__dirname, './routes/*.js')], 
 };
 
 const swaggerSpec = swaggerJSDoc(swaggerOptions);
