@@ -14,7 +14,7 @@ app.use(express.json());
 app.set('trust proxy', 1);
 
 // --- NUESTRO MIDDLEWARE DE SEGURIDAD POR IP (EL "PORTERO") ---
-const whitelist = ['45.232.149.130', '168.194.102.140']; // La lista de invitados
+const whitelist = ['45.232.149.130', '168.194.102.140']; // Lista de IPs permitidas (Instituto y tu casa)
 
 const ipWhitelistMiddleware = (req, res, next) => {
     const clientIp = req.ip; // Obtenemos la IP real del visitante
@@ -23,11 +23,11 @@ const ipWhitelistMiddleware = (req, res, next) => {
 
     // Comprobamos si la IP del visitante está en nuestra lista
     if (whitelist.includes(clientIp)) {
-        // Si está en la lista, le decimos a la petición que continúe.
+        // Si está en la lista, le decimos a la petición que continúe al siguiente paso.
         next();
     } else {
         // Si NO está en la lista, la bloqueamos inmediatamente.
-        res.status(403).json({ error: 'Acceso prohibido: IP no autorizada.' });
+        res.status(403).json({ error: 'Acceso prohibido: Su dirección IP no está autorizada.' });
     }
 };
 
