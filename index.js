@@ -2,6 +2,7 @@
 
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 // 1. INICIALIZAR LA APLICACIÓN (Esto faltaba y causaba el error 'app is not defined')
 const app = express();
