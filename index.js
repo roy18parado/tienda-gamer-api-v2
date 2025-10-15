@@ -1,4 +1,4 @@
-// Archivo: index.js (Versión Completa y Definitiva)
+// Archivo: index.js (Versión Final y Definitiva)
 
 const express = require('express');
 const cors = require('cors');
@@ -8,14 +8,18 @@ const path = require('path');
 const app = express();
 
 // 2. MIDDLEWARES BÁSICOS
-app.use(express.json()); // Para que Express entienda peticiones con cuerpo JSON
+app.use(express.json());
 // Habilitamos esto para que Express confíe en la información del proxy de Render
-// y nos dé la IP real del visitante en `req.ip`.
+// y nos dé la IP real del visitante en `req.ip`. ESTA LÍNEA ES CRUCIAL.
 app.set('trust proxy', 1);
 
 // --- MIDDLEWARE DE SEGURIDAD POR IP (EL "PORTERO") ---
-// Esta es la implementación correcta y segura.
-const whitelist = ['45.232.149.130', '168.194.102.140', '10.214.148.122']; // IP del Instituto Y TU IP DE CASA
+// Esta es la implementación correcta que resuelve el error.
+const whitelist = [
+    '45.232.149.130',      // IP del Instituto
+    '168.194.102.140',     // Tu IP de casa (la primera que detectamos)
+    '10.214.210.158'       // <-- LA IP CORRECTA QUE NOS DIO EL SERVIDOR
+];
 
 const ipWhitelistMiddleware = (req, res, next) => {
     const clientIp = req.ip; // Obtenemos la IP real del visitante
@@ -35,13 +39,15 @@ const ipWhitelistMiddleware = (req, res, next) => {
 
 // 3. APLICAMOS LA SEGURIDAD
 // Le decimos a Express que use nuestro "portero" para TODAS las peticiones que lleguen.
+// Debe ir ANTES de las rutas.
 app.use(ipWhitelistMiddleware);
 
 // Ahora que nuestra seguridad por IP está funcionando, podemos usar CORS
 // de forma más abierta, ya que solo las IPs permitidas llegarán hasta aquí.
 app.use(cors());
 
-// 4. RUTAS DE LA API
+
+// 4. RUTAS DE LA API (Estas no cambian)
 const authRoutes = require('./routes/auth');
 const categoriasRoutes = require('./routes/categorias');
 const productosRoutes = require('./routes/productos');
@@ -54,7 +60,7 @@ app.use('/productos', productosRoutes);
 app.use('/imagenes', imagenesRoutes);
 app.use('/usuarios', usuariosRoutes);
 
-// 5. CONFIGURACIÓN DE SWAGGER
+// 5. CONFIGURACIÓN DE SWAGGER (Esto no cambia)
 const swaggerUi = require('swagger-ui-express');
 const swaggerJSDoc = require('swagger-jsdoc');
 
