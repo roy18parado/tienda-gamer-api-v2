@@ -14,7 +14,7 @@ app.use(express.json());
 app.set('trust proxy', 1);
 
 // --- NUESTRO MIDDLEWARE DE SEGURIDAD POR IP (EL "PORTERO") ---
-const whitelist = ['45.232.149.130', '168.194.102.140']; // Lista de IPs permitidas (Instituto y tu casa)
+const whitelist = ['45.232.149.130', '168.194.102.140','2001:4860:7:f0b::f9']; // Lista de IPs permitidas (Instituto y tu casa)
 
 const ipWhitelistMiddleware = (req, res, next) => {
     const clientIp = req.ip; // Obtenemos la IP real del visitante
