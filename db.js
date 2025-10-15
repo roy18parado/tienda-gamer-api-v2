@@ -1,14 +1,14 @@
-// db.js
-const mysql = require('mysql2/promise');
+// Archivo: db.js (Versión Definitiva para PostgreSQL)
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASS || '',
-  database: process.env.DB_NAME || 'tienda_gamer',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
-module.exports = pool;
+module.exports = {
+  query: (text, params) => pool.query(text, params),
+};
