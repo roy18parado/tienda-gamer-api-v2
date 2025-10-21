@@ -1,10 +1,10 @@
-// Archivo: index.js (Versión Definitiva, Adaptada y Segura)
+// Archivo: index.js (Versión Definitiva - Solo Instituto)
 
 // --- 1. IMPORTACIONES ---
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const ipRangeCheck = require('ip-range-check'); // Para la seguridad de IP
+const ipRangeCheck = require('ip-range-check'); // Herramienta para IPs
 
 // --- 2. INICIALIZACIÓN DE LA APP ---
 const app = express();
@@ -13,14 +13,15 @@ app.use(express.json());
 // --- 3. CONFIGURACIÓN DE SEGURIDAD ---
 
 // Habilitamos esto para que Express confíe en la información del proxy de Render
-// y nos dé la IP real del visitante en `req.ip`. Es más fiable que 'x-forwarded-for'.
+// y nos dé la IP real del visitante en `req.ip`.
 app.set('trust proxy', 1);
 
 // Definimos la lista de IPs y RANGOS permitidos
+// Solo permitimos la IP pública del instituto Y el rango interno de Render
+// por donde sabemos que entran las peticiones.
 const whitelist = [
-    '45.232.149.130',      // IP del Instituto (Pública)
-    '168.194.102.140',     // Tu IP de casa (si la necesitas)
-    '10.214.0.0/16'        // EL RANGO COMPLETO DE IPs INTERNAS DE RENDER
+    '45.232.149.130',      // IP pública del Instituto
+    '10.214.0.0/16'        // Rango de IPs internas de Render
 ];
 
 // Creamos nuestro "portero" (Middleware de seguridad de IP)
@@ -45,20 +46,20 @@ app.use(ipWhitelistMiddleware);
 app.use(cors());
 
 
-// --- 5. RUTAS DE LA API (Respetando tu estructura) ---
+// --- 5. RUTAS DE LA API (Tu estructura) ---
 const authRoutes = require('./routes/auth');
 const categoriasRoutes = require('./routes/categorias');
 const productosRoutes = require('./routes/productos');
 const imagenesRoutes = require('./routes/imagenes');
-const usuariosRoutes = require('./routes/usuarios'); // Tu ruta es 'usuarios.js', no 'usuario.js'
+const usuariosRoutes = require('./routes/usuarios'); 
 
-app.use('/', authRoutes); // Para /login
+app.use('/', authRoutes); 
 app.use('/categorias', categoriasRoutes);
 app.use('/productos', productosRoutes);
 app.use('/imagenes', imagenesRoutes);
-app.use('/usuarios', usuariosRoutes); // Tu ruta es '/usuarios', no '/usuario'
+app.use('/usuarios', usuariosRoutes); 
 
-// --- 6. DOCUMENTACIÓN SWAGGER ---
+// --- 6. DOCUMENTACIÓN SWAGGER (Tu estructura) ---
 const swaggerUi = require('swagger-ui-express');
 const swaggerJSDoc = require('swagger-jsdoc');
 const swaggerOptions = {
@@ -76,7 +77,7 @@ const swaggerOptions = {
       }
     },
   },
-  apis: [path.join(__dirname, './routes/*.js')], // Ruta absoluta para que Render la encuentre
+  apis: [path.join(__dirname, './routes/*.js')], 
 };
 const swaggerSpec = swaggerJSDoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
