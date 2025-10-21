@@ -1,4 +1,4 @@
-// Archivo: /routes/auth.js (Corregido para PostgreSQL y Documentado)
+// Archivo: /routes/auth.js (Corregido)
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -11,29 +11,32 @@ const JWT_SECRET = process.env.JWT_SECRET || 'CLAVE_SECRETA';
  * tags:
  * name: Autenticación
  * description: Endpoints para el inicio de sesión.
- */
-/**
- * @swagger
+ *
  * components:
  * schemas:
  * LoginCredentials:
  * type: object
  * required: [username, password]
  * properties:
- * username: { type: string, description: "Nombre de usuario" }
- * password: { type: string, description: "Contraseña" }
- * example:
- * username: "admin"
- * password: "admin123"
+ * username:
+ * type: string
+ * example: "admin"
+ * password:
+ * type: string
+ * example: "admin123"
  * LoginResponse:
  * type: object
  * properties:
- * token: { type: string, description: "Token JWT" }
- * role: { type: string, description: "Rol del usuario" }
+ * token:
+ * type: string
+ * role:
+ * type: string
  * ErrorResponse:
  * type: object
  * properties:
- * error: { type: string, description: "Mensaje de error" }
+ * error:
+ * type: string
+ * example: "Usuario no encontrado"
  */
 
 /**
@@ -49,13 +52,13 @@ const JWT_SECRET = process.env.JWT_SECRET || 'CLAVE_SECRETA';
  * schema:
  * $ref: '#/components/schemas/LoginCredentials'
  * responses:
- * 200:
- * description: Login exitoso.
+ * '200':
+ * description: Login exitoso. Devuelve el token y el rol.
  * content:
  * application/json:
  * schema:
  * $ref: '#/components/schemas/LoginResponse'
- * 401:
+ * '401':
  * description: Credenciales no válidas.
  * content:
  * application/json:
