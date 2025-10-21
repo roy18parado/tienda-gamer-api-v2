@@ -1,65 +1,71 @@
-// Archivo: index.js (Versión Definitiva - Solo Instituto)
+// Archivo: index.js (Versión Definitiva con CORS y Verificación de IP)
 
-// --- 1. IMPORTACIONES ---
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const ipRangeCheck = require('ip-range-check'); // Herramienta para IPs
+const ipRangeCheck = require('ip-range-check');
 
-// --- 2. INICIALIZACIÓN DE LA APP ---
 const app = express();
-app.use(express.json());
+app.set('trust proxy', 1); // importante para req.ip correcto detrás de proxies
 
-// --- 3. CONFIGURACIÓN DE SEGURIDAD ---
-
-// Habilitamos esto para que Express confíe en la información del proxy de Render
-// y nos dé la IP real del visitante en `req.ip`.
-app.set('trust proxy', 1);
-
-// Definimos la lista de IPs y RANGOS permitidos
-// Solo permitimos la IP pública del instituto Y el rango interno de Render
-// por donde sabemos que entran las peticiones.
+// Lista de IPs permitidas (para middleware personalizado)
 const whitelist = [
-    '45.232.149.130',      // IP pública del Instituto
-    '10.214.0.0/16'        // Rango de IPs internas de Render
+  '45.232.149.130',      // IP pública permitida
+  '10.214.0.0/16'        // rango interno permitido
 ];
 
-// Creamos nuestro "portero" (Middleware de seguridad de IP)
+// Middleware para validar IP de cliente
 const ipWhitelistMiddleware = (req, res, next) => {
-    const clientIp = req.ip;
-    console.log(`Petición recibida desde la IP: ${clientIp}`);
+  // Detecta IP real del cliente
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.connection.remoteAddress;
+  console.log(`Petición recibida desde la IP: ${clientIp}`);
 
-    // Verificamos si la IP está en la lista o dentro del rango
-    if (ipRangeCheck(clientIp, whitelist)) {
-        next(); // Permitido
-    } else {
-        res.status(403).json({ error: `Acceso prohibido: Su dirección IP (${clientIp}) no está autorizada.` });
-    }
+  if (ipRangeCheck(clientIp, whitelist)) {
+    next();
+  } else {
+    res.status(403).json({ error: `Acceso prohibido: Su dirección IP (${clientIp}) no está autorizada.` });
+  }
 };
 
-// --- 4. APLICACIÓN DE MIDDLEWARES ---
+// Middleware CORS configurado para permitir solo el origen desde tu IP pública
+const allowedOrigins = ['http://45.232.149.130']; // Cambiar a https:// si usas HTTPS
 
-// 1ro: Aplicamos nuestro portero de IP a TODAS las peticiones
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin) {
+      // Bloquea solicitudes sin encabezado Origin (ej: Postman, cURL)
+      return callback(new Error('CORS: Sin origen no permitido'));
+    }
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log(`🛑 CORS bloqueado: origen no permitido -> ${origin}`);
+      callback(new Error('CORS: Origen no permitido'));
+    }
+  },
+  optionsSuccessStatus: 200,
+  credentials: true
+};
+
+// Asegura que el orden sea: IP whitelist primero, luego CORS
 app.use(ipWhitelistMiddleware);
+app.use(cors(corsOptions));
+app.use(express.json());
 
-// 2do: Aplicamos CORS. Solo las IPs que pasaron el primer filtro llegarán aquí.
-app.use(cors());
-
-
-// --- 5. RUTAS DE LA API (Tu estructura) ---
+// RUTAS DE LA API
 const authRoutes = require('./routes/auth');
 const categoriasRoutes = require('./routes/categorias');
 const productosRoutes = require('./routes/productos');
 const imagenesRoutes = require('./routes/imagenes');
-const usuariosRoutes = require('./routes/usuarios'); 
+const usuariosRoutes = require('./routes/usuarios');
 
-app.use('/', authRoutes); 
+app.use('/', authRoutes);
 app.use('/categorias', categoriasRoutes);
 app.use('/productos', productosRoutes);
 app.use('/imagenes', imagenesRoutes);
-app.use('/usuarios', usuariosRoutes); 
+app.use('/usuarios', usuariosRoutes);
 
-// --- 6. DOCUMENTACIÓN SWAGGER (Tu estructura) ---
+// CONFIGURACIÓN DE SWAGGER
 const swaggerUi = require('swagger-ui-express');
 const swaggerJSDoc = require('swagger-jsdoc');
 const swaggerOptions = {
@@ -77,12 +83,12 @@ const swaggerOptions = {
       }
     },
   },
-  apis: [path.join(__dirname, './routes/*.js')], 
+  apis: [path.join(__dirname, './routes/*.js')],
 };
 const swaggerSpec = swaggerJSDoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// --- 7. INICIO DEL SERVIDOR ---
+// INICIO DEL SERVIDOR
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
