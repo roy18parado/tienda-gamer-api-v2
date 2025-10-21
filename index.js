@@ -1,33 +1,36 @@
-// Archivo: index.js (Versión Final con Ruta Absoluta para Swagger)
+// Archivo: index.js (Versión Definitiva con Verificación de Rango de IP)
 
 const express = require('express');
 const cors = require('cors');
-const path = require('path'); // <-- PASO 1: IMPORTAR PATH
+const path = require('path');
+const ipRangeCheck = require('ip-range-check'); // <-- 1. IMPORTAMOS LA NUEVA HERRAMIENTA
 
-// 1. INICIALIZAR LA APLICACIÓN
 const app = express();
-
-// 2. MIDDLEWARES
 app.use(express.json());
 app.set('trust proxy', 1);
 
-// --- MIDDLEWARE DE SEGURIDAD POR IP ---
+// --- MIDDLEWARE DE SEGURIDAD POR IP (VERSIÓN FINAL) ---
 const whitelist = [
-    '45.232.149.130',
+    '45.232.149.130',      // IP del Instituto (Pública)
+    '10.214.0.0/16'        // EL RANGO COMPLETO DE IPs INTERNAS DE RENDER
 ];
+
 const ipWhitelistMiddleware = (req, res, next) => {
     const clientIp = req.ip;
     console.log(`Petición recibida desde la IP: ${clientIp}`);
-    if (whitelist.includes(clientIp)) {
-        next();
+
+    // Verificamos si la IP está en la lista o dentro del rango
+    if (ipRangeCheck(clientIp, whitelist)) {
+        next(); // Permitido
     } else {
         res.status(403).json({ error: `Acceso prohibido: Su dirección IP (${clientIp}) no está autorizada.` });
     }
 };
+
 app.use(ipWhitelistMiddleware);
 app.use(cors());
 
-// 3. RUTAS DE LA API
+// RUTAS DE LA API
 const authRoutes = require('./routes/auth');
 const categoriasRoutes = require('./routes/categorias');
 const productosRoutes = require('./routes/productos');
@@ -40,36 +43,30 @@ app.use('/productos', productosRoutes);
 app.use('/imagenes', imagenesRoutes);
 app.use('/usuarios', usuariosRoutes);
 
-// 4. CONFIGURACIÓN DE SWAGGER
+// CONFIGURACIÓN DE SWAGGER
 const swaggerUi = require('swagger-ui-express');
 const swaggerJSDoc = require('swagger-jsdoc');
-
 const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
     info: {
       title: 'API de Tienda Gamer',
       version: '1.0.0',
-      description: 'Documentación técnica completa de la API para la Tienda Gamer.',
+      description: 'Documentación técnica completa de la API.',
     },
     servers: [{ url: 'https://tienda-gamer-api.onrender.com' }],
     components: {
       securitySchemes: {
-        BearerAuth: {
-          type: 'http', scheme: 'bearer', bearerFormat: 'JWT',
-          description: 'Ingresa el token JWT obtenido en el login. Formato: Bearer <token>'
-        }
+        BearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }
       }
     },
   },
-  // PASO 2: USAR LA RUTA ABSOLUTA
-  apis: [path.join(__dirname, './routes/*.js')], 
+  apis: [path.join(__dirname, './routes/*.js')],
 };
-
 const swaggerSpec = swaggerJSDoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// 5. INICIO DEL SERVIDOR
+// INICIO DEL SERVIDOR
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
