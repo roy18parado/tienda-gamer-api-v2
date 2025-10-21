@@ -16,17 +16,29 @@ const whitelist = [
 ];
 
 // Middleware para validar IP de cliente
-const ipWhitelistMiddleware = (req, res, next) => {
-  // Detecta IP real del cliente
-  const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.connection.remoteAddress;
-  console.log(`Petición recibida desde la IP: ${clientIp}`);
+const ip = require('ip'); // npm install ip
 
-  if (ipRangeCheck(clientIp, whitelist)) {
+const ipWhitelistMiddleware = (req, res, next) => {
+  const forwardedFor = req.headers['x-forwarded-for'];
+  const clientIp = forwardedFor ? forwardedFor.split(',')[0].trim() : req.ip;
+
+  const ipClean = ip.toString(clientIp); // limpia formatos IPv6 tipo "::ffff:..."
+
+  console.log(`🛡️ IP recibida: ${clientIp} ➜ Limpia: ${ipClean}`);
+
+  if (ipRangeCheck(ipClean, whitelist)) {
     next();
   } else {
-    res.status(403).json({ error: `Acceso prohibido: Su dirección IP (${clientIp}) no está autorizada.` });
+    return res.status(403).json({
+      error: `Acceso prohibido desde IP no autorizada: ${ipClean}`
+    });
   }
 };
+
+app.use((err, req, res, next) => {
+  console.error('❌ Error interno:', err);
+  res.status(500).json({ error: 'Error interno del servidor', detalles: err.message });
+});
 
 // Middleware CORS configurado para permitir solo el origen desde tu IP pública
 const allowedOrigins = ['http://45.232.149.130']; // Cambiar a https:// si usas HTTPS
