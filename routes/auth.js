@@ -1,4 +1,5 @@
-// Archivo: /routes/auth.js (Corregido)
+// Archivo: /routes/auth.js (Corregido y Limpio)
+
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -60,6 +61,12 @@ const JWT_SECRET = process.env.JWT_SECRET || 'CLAVE_SECRETA';
  * $ref: '#/components/schemas/LoginResponse'
  * '401':
  * description: Credenciales no válidas.
+ * content:
+ * application/json:
+ * schema:
+ * $ref: '#/components/schemas/ErrorResponse'
+ * '400':
+ * description: Faltan campos.
  * content:
  * application/json:
  * schema:
