@@ -14,9 +14,6 @@ app.set('trust proxy', 1);
 // --- MIDDLEWARE DE SEGURIDAD POR IP ---
 const whitelist = [
     '45.232.149.130',
-    '168.194.102.140',
-    '10.214.210.158',
-    '10.214.86.182'
 ];
 const ipWhitelistMiddleware = (req, res, next) => {
     const clientIp = req.ip;
