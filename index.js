@@ -10,7 +10,8 @@ app.set('trust proxy', 1); // importante para req.ip correcto detrás de proxies
 
 // Lista de IPs permitidas (para middleware personalizado)
 const whitelist = [
-  '45.232.149.130',      // IP pública permitida
+  '45.232.149.130',      // IP pública permitida}
+  '45.232.149.146',
   '10.214.0.0/16'        // rango interno permitido
 ];
 
