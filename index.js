@@ -45,8 +45,12 @@ app.use(ipWhitelistMiddleware);
 // 6. Configurar y Aplicar CORS (DESPUÉS de IP)
 // Ahora que la IP está validada, podemos ser flexibles con el origen.
 // '*' permite cualquier origen (incluyendo 'null' de archivos locales)
-app.use(cors({ origin: '*' }));
-
+// 6. Configurar y Aplicar CORS (DESPUÉS de IP)
+app.use(cors({
+    origin: '*', // Permitir cualquier origen (IP ya validada)
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Permitir estos métodos HTTP
+    allowedHeaders: ['Content-Type', 'Authorization'] // Permitir estas cabeceras que usa tu frontend
+}));
 
 // --- RUTAS ---
 
