@@ -1,122 +1,79 @@
+// Archivo: index.js (Versión Corregida - Orden y CORS Correctos)
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const ipRangeCheck = require('ip-range-check');
 
 const app = express();
-app.set('trust proxy', 1);
+app.use(express.json()); // 1. Parsear JSON (debe ir antes de las rutas)
+app.set('trust proxy', 1); // 2. Confiar en el proxy para req.ip
 
-// Lista de IPs permitidas
+// --- SEGURIDAD ---
+
+// 3. Lista de IPs/Rangos Permitidos
 const whitelist = [
-  '45.232.149.130',
-  '45.232.149.146',
-  '168.194.102.140',
-  '34.82.242.193',
-  '10.214.0.0/16'
+  '45.232.149.130',  // Instituto
+  '45.232.149.146',  // Otra IP Instituto?
+  '168.194.102.140', // Tu Casa
+  '34.82.242.193',   // Otra IP Render?
+  '10.214.0.0/16'    // Rango Interno Render
 ];
 
-// Middleware CORS
-const allowedOrigins = [
-  'http://45.232.149.130',
-  'http://45.232.149.146'
-];
-
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.log(`🛑 CORS bloqueado: origen no permitido -> ${origin}`);
-      callback(new Error('CORS: Origen no permitido'));
-    }
-  },
-  optionsSuccessStatus: 200,
-  credentials: true
-};
-
-app.use(cors(corsOptions));
-app.use(express.json());
-
-// Middleware para validar IP
+// 4. Middleware para validar IP (PRIMERO)
 const ipWhitelistMiddleware = (req, res, next) => {
-  try {
-    const forwardedFor = req.headers['x-forwarded-for'];
-    const clientIp = forwardedFor ? forwardedFor.split(',')[0].trim() : req.ip;
-    const ipClean = clientIp.replace(/::ffff:/, '');
-    
-    console.log(`🛡️ IP recibida: ${clientIp} ➜ Limpia: ${ipClean}`);
+  const clientIp = req.ip; // Usar req.ip es más fiable con 'trust proxy'
+  console.log(`🛡️ IP recibida: ${clientIp}`);
 
-    if (ipRangeCheck(ipClean, whitelist)) {
-      console.log(`✅ IP AUTORIZADA: ${ipClean}`);
-      next();
-    } else {
-      console.log(`❌ IP NO AUTORIZADA: ${ipClean}`);
-      return res.status(403).json({
-        error: `Acceso prohibido desde IP no autorizada: ${ipClean}`,
-        ipRecibida: ipClean,
-        ipsPermitidas: whitelist
-      });
-    }
-  } catch (error) {
-    console.error('❌ Error en middleware de IP:', error);
-    next();
+  if (ipRangeCheck(clientIp, whitelist)) {
+    console.log(`✅ IP AUTORIZADA: ${clientIp}`);
+    next(); // IP OK, continuar
+  } else {
+    console.log(`❌ IP NO AUTORIZADA: ${clientIp}`);
+    // ¡IMPORTANTE! Devolver error si la IP no está permitida
+    return res.status(403).json({
+      error: `Acceso prohibido desde IP no autorizada: ${clientIp}`
+    });
   }
 };
 
+// 5. Aplicar el Middleware de IP PRIMERO
 app.use(ipWhitelistMiddleware);
 
-// ✅ RUTAS PRINCIPALES - AGREGAR ESTO
+// 6. Configurar y Aplicar CORS (DESPUÉS de IP)
+// Ahora que la IP está validada, podemos ser flexibles con el origen.
+// '*' permite cualquier origen (incluyendo 'null' de archivos locales)
+app.use(cors({ origin: '*' }));
+
+
+// --- RUTAS ---
+
+// Rutas de Información/Estado
 app.get('/', (req, res) => {
   res.json({
     message: '🚀 API de Tienda Gamer funcionando correctamente',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
-    endpoints: {
-      documentacion: '/api-docs',
-      autenticacion: '/login, /register, /verify',
-      categorias: '/categorias',
-      productos: '/productos',
-      imagenes: '/imagenes',
-      usuarios: '/usuarios'
-    },
+    endpoints: { /* ... tus endpoints ... */ },
     status: 'active'
   });
 });
+// ... (Tus otras rutas /info, /status si las quieres mantener) ...
 
-app.get('/info', (req, res) => {
-  res.json({
-    name: 'Tienda Gamer API',
-    description: 'API REST para sistema de tienda gamer',
-    version: '1.0.0',
-    environment: process.env.NODE_ENV || 'development',
-    serverTime: new Date().toISOString()
-  });
-});
-
-app.get('/status', (req, res) => {
-  res.json({
-    status: 'OK',
-    server: 'Running',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// RUTAS DE LA API
+// Rutas Principales de la API
 const authRoutes = require('./routes/auth');
 const categoriasRoutes = require('./routes/categorias');
 const productosRoutes = require('./routes/productos');
 const imagenesRoutes = require('./routes/imagenes');
 const usuariosRoutes = require('./routes/usuarios');
 
-app.use('/', authRoutes);
+app.use('/', authRoutes); // Contiene /login
 app.use('/categorias', categoriasRoutes);
 app.use('/productos', productosRoutes);
 app.use('/imagenes', imagenesRoutes);
 app.use('/usuarios', usuariosRoutes);
 
-// CONFIGURACIÓN DE SWAGGER (opcional - si ya corregiste auth.js)
+// --- SWAGGER ---
 const swaggerUi = require('swagger-ui-express');
 const swaggerJSDoc = require('swagger-jsdoc');
 const swaggerOptions = {
@@ -127,7 +84,7 @@ const swaggerOptions = {
       version: '1.0.0',
       description: 'Documentación técnica completa de la API.',
     },
-    servers: [{ url: 'https://tienda-gamer-api.onrender.com' }],
+    servers: [{ url: 'https://tienda-api-v2.onrender.com' }], // USA TU URL NUEVA
     components: {
       securitySchemes: {
         BearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }
@@ -139,28 +96,20 @@ const swaggerOptions = {
 const swaggerSpec = swaggerJSDoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Middleware de manejo de errores
+// --- MANEJO DE ERRORES (Al final de todo) ---
 app.use((err, req, res, next) => {
-  console.error('❌ Error interno del servidor:', err.message);
-  
-  if (err.message.includes('CORS')) {
-    return res.status(403).json({ 
-      error: 'Acceso CORS denegado',
-      detalles: err.message 
-    });
-  }
-  
-  res.status(500).json({ 
+  console.error('❌ Error interno del servidor:', err.message || err);
+  res.status(500).json({
     error: 'Error interno del servidor',
-    detalles: process.env.NODE_ENV === 'development' ? err.message : 'Contacta al administrador'
+    // Mostrar detalles solo en desarrollo podría ser una opción
+    detalles: err.message
   });
 });
 
-// INICIO DEL SERVIDOR
+// --- INICIO DEL SERVIDOR ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
   console.log(`📋 IPs permitidas: ${whitelist.join(', ')}`);
-  console.log(`🌐 Orígenes CORS permitidos: ${allowedOrigins.join(', ')}`);
-  console.log(`📚 Documentación disponible en: http://localhost:${PORT}/api-docs`);
+  console.log(`📚 Documentación disponible en: /api-docs`);
 });
