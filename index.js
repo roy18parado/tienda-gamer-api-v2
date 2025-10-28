@@ -18,6 +18,7 @@ const whitelist = [
   '168.194.102.140', // Tu Casa
   '34.82.242.193',   // Otra IP Render?
   '10.204.184.225',
+  '201.230.105.234',
   '10.214.0.0/16'    // Rango Interno Render
 ];
 
