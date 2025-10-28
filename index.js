@@ -1,4 +1,4 @@
-// Archivo: index.js (Versión Corregida - CORS ANTES de IP)
+// Archivo: index.js (Versión Final - CORS Global, IP por Ruta)
 
 const express = require('express');
 const cors = require('cors');
@@ -9,33 +9,29 @@ const app = express();
 app.use(express.json()); // 1. Parsear JSON
 app.set('trust proxy', 1); // 2. Confiar en proxy para req.ip
 
-// --- CONFIGURACIÓN CORS (PRIMERO) ---
-// 3. Aplicar CORS ANTES del filtro de IP.
-//    Esto asegura que las peticiones OPTIONS (preflight) se manejen correctamente.
+// --- CONFIGURACIÓN CORS GLOBAL (PRIMERO Y ÚNICO) ---
+// 3. Aplicar CORS globalmente ANTES de cualquier ruta o filtro de IP.
 app.use(cors({
-    origin: '*', // Permitir cualquier origen (ya que filtraremos IP después)
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Métodos permitidos
-    allowedHeaders: ['Content-Type', 'Authorization'] // Cabeceras permitidas
+    origin: '*', // Permitir cualquier origen
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// --- SEGURIDAD DE IP (SEGUNDO) ---
-
+// --- MIDDLEWARE DE SEGURIDAD DE IP (Definición) ---
 // 4. Lista de IPs/Rangos Permitidos
 const whitelist = [
-  '45.232.149.130',  // Instituto
-  '45.232.149.146',  // Otra IP Instituto?
+  '45.232.149.130',  // Instituto 1
+  '45.232.149.146',  // Instituto 2
   '168.194.102.140', // Tu Casa
-  '34.82.242.193',   // Otra IP Render?
-  '201.230.105.234',
-  '10.204.0.0/16',    // Rango Interno Render 2 (NUEVO)
-  '10.214.0.0/16'    // Rango Interno Render
+  '10.214.0.0/16',   // Rango Interno Render 1
+  '10.204.0.0/16'    // Rango Interno Render 2
 ];
 
-// 5. Middleware para validar IP
+// 5. Función Middleware para validar IP (SIN app.use global)
 const ipWhitelistMiddleware = (req, res, next) => {
-  // Las peticiones OPTIONS no siempre tienen IP fiable o no necesitan este chequeo
+  // Las peticiones OPTIONS ya fueron manejadas por cors(), las saltamos aquí también
   if (req.method === 'OPTIONS') {
-    return next(); // Saltar chequeo de IP para OPTIONS
+    return next();
   }
 
   const clientIp = req.ip;
@@ -43,7 +39,7 @@ const ipWhitelistMiddleware = (req, res, next) => {
 
   if (ipRangeCheck(clientIp, whitelist)) {
     console.log(`✅ IP AUTORIZADA: ${clientIp}`);
-    next(); // IP OK, continuar
+    next(); // IP OK, continuar a la ruta específica
   } else {
     console.log(`❌ IP NO AUTORIZADA: ${clientIp}`);
     return res.status(403).json({
@@ -52,35 +48,34 @@ const ipWhitelistMiddleware = (req, res, next) => {
   }
 };
 
-// 6. Aplicar el Middleware de IP DESPUÉS de CORS
-app.use(ipWhitelistMiddleware);
-
-
 // --- RUTAS ---
-// (El resto de tus rutas, Swagger, Error Handler y app.listen no cambian)
 
-// Rutas de Información/Estado
-app.get('/', (req, res) => {
+// Rutas Públicas (como /login, no necesitan filtro de IP aquí)
+const authRoutes = require('./routes/auth');
+app.use('/', authRoutes); // Login no necesita filtro IP (¿o sí? Depende de tu lógica)
+
+// Rutas de Información (pueden ser públicas o necesitar filtro)
+app.get('/', (req, res) => { // Ejemplo de ruta pública sin filtro IP
   res.json({ /* ... tu mensaje de bienvenida ... */ });
 });
-// ... (otras rutas /info, /status) ...
 
-// Rutas Principales de la API
-const authRoutes = require('./routes/auth');
+// Rutas Protegidas por IP (Aplicamos el middleware ANTES de las rutas)
 const categoriasRoutes = require('./routes/categorias');
 const productosRoutes = require('./routes/productos');
 const imagenesRoutes = require('./routes/imagenes');
 const usuariosRoutes = require('./routes/usuarios');
 
-app.use('/', authRoutes);
-app.use('/categorias', categoriasRoutes);
-app.use('/productos', productosRoutes);
-app.use('/imagenes', imagenesRoutes);
-app.use('/usuarios', usuariosRoutes);
+// 6. Aplicar filtro IP SOLO a las rutas que lo necesiten
+app.use('/categorias', ipWhitelistMiddleware, categoriasRoutes);
+app.use('/productos', ipWhitelistMiddleware, productosRoutes);
+app.use('/imagenes', ipWhitelistMiddleware, imagenesRoutes);
+app.use('/usuarios', ipWhitelistMiddleware, usuariosRoutes);
+
 
 // --- SWAGGER ---
 const swaggerUi = require('swagger-ui-express');
 const swaggerJSDoc = require('swagger-jsdoc');
+// (Asegúrate que tu auth.js esté limpio antes de habilitar Swagger)
 const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
@@ -90,13 +85,23 @@ const swaggerOptions = {
   },
   apis: [path.join(__dirname, './routes/*.js')],
 };
-const swaggerSpec = swaggerJSDoc(swaggerOptions);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+try {
+    const swaggerSpec = swaggerJSDoc(swaggerOptions);
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+    console.log("📚 Documentación Swagger configurada correctamente.");
+} catch (yamlError) {
+    console.error("❌ ERROR AL CONFIGURAR SWAGGER:", yamlError.message);
+    // Opcional: Montar una ruta que muestre el error
+    app.use('/api-docs', (req, res) => {
+        res.status(500).json({ error: "Error al generar la documentación Swagger. Revisa auth.js.", detalles: yamlError.message });
+    });
+}
+
 
 // --- MANEJO DE ERRORES (Al final) ---
 app.use((err, req, res, next) => {
   console.error('❌ Error interno del servidor:', err.message || err);
-  res.status(500).json({ /* ... tu error genérico ... */ });
+  res.status(500).json({ error: 'Error interno del servidor' });
 });
 
 // --- INICIO DEL SERVIDOR ---
@@ -104,5 +109,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
   console.log(`📋 IPs permitidas: ${whitelist.join(', ')}`);
-  console.log(`📚 Documentación disponible en: /api-docs`);
 });
